@@ -1,0 +1,52 @@
+# Study Guide .gitignore
+
+# Personal study notes that shouldn't be shared
+personal-notes/
+private-thoughts.md
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Log files from exercises
+*.log
+test-*.txt
+
+# Virtual machine files (too large for git)
+*.vmdk
+*.vdi
+*.qcow2
+*.iso
+
+# Backup files
+*.bak
+*.backup
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Study session recordings or large media files
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# Personal progress that may contain sensitive info
+personal-progress.md
+study-journal.md
