@@ -1,0 +1,13 @@
+[Unit]
+Description=Hourly Weather Check Service
+After=network.target
+
+[Service]
+Type=oneshot
+User=casquinn
+ExecStart=/home/casquinn/scripts/system/weather-check.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
