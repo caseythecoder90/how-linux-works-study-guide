@@ -1,0 +1,290 @@
+# Production Samba Configuration
+# File: examples/samba/smb.conf.production
+# This configuration is optimized for security, performance, and enterprise use
+
+#======================= Global Settings =======================
+[global]
+    # Server identification
+    workgroup = COMPANY
+    server string = Company File Server %v
+    netbios name = FILESERVER
+
+    # Security settings - Hardened for production
+    security = user
+    encrypt passwords = yes
+    smb encrypt = required                   # Require encryption for all connections
+    client min protocol = SMB3              # Minimum SMB3 for security
+    server min protocol = SMB3              # Force SMB3 minimum
+    client max protocol = SMB3              # Maximum SMB3
+    server max protocol = SMB3              # Force SMB3 maximum
+
+    # Authentication and access control
+    passdb backend = tdbsam
+    map to guest = never                     # Never allow guest access
+    restrict anonymous = 2                   # Completely restrict anonymous
+    null passwords = no                      # Disallow null passwords
+    obey pam restrictions = yes              # Respect PAM account restrictions
+
+    # Network security
+    bind interfaces only = yes               # Only bind to specified interfaces
+    interfaces = lo eth0 192.168.1.100/24  # Specify allowed interfaces
+    hosts allow = 192.168.1. 10.0.0. 172.16. localhost
+    hosts deny = ALL                         # Deny all others
+    smb ports = 445                         # Only use port 445 (disable 139)
+    disable netbios = yes                   # Disable legacy NetBIOS
+
+    # Protocol security hardening
+    lanman auth = no                        # Disable LAN Manager authentication
+    ntlm auth = ntlmv2-only                # Only allow NTLMv2
+    raw NTLMv2 auth = no                   # Disable raw NTLMv2
+    client use spnego = required           # Require SPNEGO
+    client ntlmv2 auth = yes               # Use NTLMv2 on client
+    client lanman auth = no                # Disable LAN Manager on client
+    client plaintext auth = no             # Disable plaintext passwords
+
+    # Logging and auditing - Enhanced for compliance
+    log level = 2 auth_audit:3 auth_json_audit:3 winbind:2
+    log file = /var/log/samba/log.%m
+    max log size = 50000                   # 50MB log files
+    syslog = 1                            # Also log to syslog
+
+    # Full audit module for compliance
+    vfs objects = full_audit recycle
+    full_audit:prefix = %u|%I|%S
+    full_audit:success = connect disconnect opendir mkdir rmdir closedir open close read pread write pwrite sendfile rename unlink chmod fchmod chown fchown chdir ftruncate lock unlock readlink symlink link mknod realpath
+    full_audit:failure = connect disconnect opendir mkdir rmdir closedir open close read pread write pwrite sendfile rename unlink chmod fchmod chown fchown chdir ftruncate lock unlock readlink symlink link mknod realpath
+    full_audit:facility = local5
+    full_audit:priority = NOTICE
+
+    # Performance tuning for production
+    socket options = TCP_NODELAY IPTOS_LOWDELAY SO_RCVBUF=131072 SO_SNDBUF=131072
+    read raw = yes
+    write raw = yes
+    max xmit = 131072                      # 128KB transfer size
+    deadtime = 15                          # Disconnect idle clients after 15 min
+    getwd cache = yes                      # Cache working directory
+    lpq cache time = 30                    # Cache print queue for 30 seconds
+
+    # File system optimization
+    strict allocate = yes                   # Preallocate disk space
+    allocation roundup size = 1048576      # 1MB allocation units
+    write cache size = 2097152             # 2MB write cache
+
+    # Load balancing and clustering support
+    clustering = no                        # Set to yes if using CTDB
+
+    # Printing configuration
+    load printers = yes
+    printing = cups
+    printcap name = cups
+    show add printer wizard = no
+
+    # Recycle bin configuration
+    recycle:repository = .recycle
+    recycle:keeptree = yes
+    recycle:versions = yes
+    recycle:touch = yes
+    recycle:directory_mode = 0774
+    recycle:subdir_mode = 0774
+
+    # Misc security settings
+    dns proxy = no
+    wins support = no
+    domain master = no
+    local master = no
+    preferred master = no
+    os level = 0
+
+    # Disable unnecessary features
+    enable core files = no
+    panic action = /usr/share/samba/panic-action %d
+
+#======================= Share Definitions ======================
+
+# Home directories - Secure personal shares
+[homes]
+    comment = Home Directories
+    browseable = no
+    writable = yes
+    valid users = %S
+    create mask = 0700                     # Owner only access
+    directory mask = 0700
+    veto files = /.htaccess/.DS_Store/Thumbs.db/
+    delete veto files = yes
+    hide dot files = yes
+
+# Company shared files - General access
+[shared]
+    comment = Company Shared Files
+    path = /srv/samba/shared
+    browseable = yes
+    writable = yes
+    valid users = @employees, @contractors
+    write list = @employees
+    create mask = 0664
+    directory mask = 0775
+    force group = employees
+    inherit acls = yes
+    inherit permissions = yes
+    veto files = /.htaccess/.DS_Store/Thumbs.db/*.exe/*.com/*.bat/*.cmd/*.scr/*.pif/
+    delete veto files = yes
+    hide dot files = yes
+    hide special files = yes
+
+# Finance department - Restricted access
+[finance]
+    comment = Finance Department Files
+    path = /srv/samba/finance
+    browseable = yes
+    writable = yes
+    valid users = @finance, @executives, @audit
+    write list = @finance, @executives
+    admin users = @finance-admin
+    create mask = 0660
+    directory mask = 0770
+    force group = finance
+    inherit acls = yes
+    veto files = /.htaccess/.DS_Store/Thumbs.db/*.exe/*.com/*.bat/*.cmd/*.scr/*.pif/
+    delete veto files = yes
+    hide dot files = yes
+    hide unreadable = yes
+
+# Human Resources - Highly restricted
+[hr]
+    comment = Human Resources Department
+    path = /srv/samba/hr
+    browseable = no                        # Don't show in browse list
+    writable = yes
+    valid users = @hr, @executives
+    write list = @hr
+    admin users = @hr-admin
+    create mask = 0600                     # Most restrictive
+    directory mask = 0700
+    force group = hr
+    inherit acls = yes
+    veto files = /.htaccess/.DS_Store/Thumbs.db/*.exe/*.com/*.bat/*.cmd/*.scr/*.pif/
+    delete veto files = yes
+    hide dot files = yes
+    hide unreadable = yes
+    hide unwriteable files = yes
+
+# IT Department - Technical files
+[it]
+    comment = IT Department Files
+    path = /srv/samba/it
+    browseable = yes
+    writable = yes
+    valid users = @it, @executives
+    write list = @it
+    admin users = @it-admin
+    create mask = 0664
+    directory mask = 0775
+    force group = it
+    inherit acls = yes
+    veto files = /.htaccess/.DS_Store/Thumbs.db/
+    delete veto files = yes
+
+# Public read-only share
+[public]
+    comment = Public Files (Read Only)
+    path = /srv/samba/public
+    browseable = yes
+    writable = no
+    guest ok = no                          # No guest access in production
+    valid users = @employees, @contractors
+    create mask = 0644
+    directory mask = 0755
+    hide dot files = yes
+
+# Backup share - Automated backup access
+[backup]
+    comment = Backup Repository
+    path = /srv/samba/backup
+    browseable = no
+    writable = yes
+    valid users = backupuser, @backup-operators
+    force user = backupuser
+    force group = backup
+    create mask = 0600
+    directory mask = 0700
+    veto files = /.htaccess/.DS_Store/Thumbs.db/
+    delete veto files = yes
+
+# Software repository
+[software]
+    comment = Software Repository
+    path = /srv/samba/software
+    browseable = yes
+    writable = no
+    valid users = @employees, @contractors
+    write list = @it, @software-admin
+    create mask = 0644
+    directory mask = 0755
+    hide dot files = yes
+    veto files = /.htaccess/.DS_Store/Thumbs.db/*.exe/*.com/*.bat/*.cmd/*.scr/*.pif/
+
+# Project shares - Template for project-specific shares
+[project-template]
+    comment = Project Template (Copy for new projects)
+    path = /srv/samba/projects/%S
+    browseable = yes
+    writable = yes
+    valid users = @project-%S, @project-managers
+    write list = @project-%S
+    admin users = @project-%S-admin
+    create mask = 0664
+    directory mask = 0775
+    force group = project-%S
+    inherit acls = yes
+    veto files = /.htaccess/.DS_Store/Thumbs.db/*.exe/*.com/*.bat/*.cmd/*.scr/*.pif/
+    delete veto files = yes
+    available = no                         # Disabled by default
+
+# Print share
+[print$]
+    comment = Printer Drivers
+    path = /var/lib/samba/printers
+    browseable = yes
+    read only = yes
+    guest ok = no
+    valid users = @print-operators, @it
+    write list = @print-operators, @it
+
+[printers]
+    comment = All Printers
+    path = /var/spool/samba
+    browseable = no
+    guest ok = no
+    valid users = @employees, @contractors
+    writable = no
+    printable = yes
+    print command = lpr -P %p %s
+    lpq command = lpq -P %p
+    lprm command = lprm -P %p %j
+
+# Temporary share for file transfers
+[temp]
+    comment = Temporary File Transfer
+    path = /srv/samba/temp
+    browseable = yes
+    writable = yes
+    valid users = @employees
+    create mask = 0644
+    directory mask = 0755
+    force group = users
+    # Auto-cleanup after 7 days
+    vfs objects = full_audit recycle
+
+# Archive share - Long-term storage
+[archive]
+    comment = Archive Storage
+    path = /srv/samba/archive
+    browseable = yes
+    writable = yes
+    valid users = @employees, @archive-users
+    write list = @archive-admin
+    create mask = 0644
+    directory mask = 0755
+    read only = no
+    veto files = /.htaccess/.DS_Store/Thumbs.db/
+    delete veto files = yes

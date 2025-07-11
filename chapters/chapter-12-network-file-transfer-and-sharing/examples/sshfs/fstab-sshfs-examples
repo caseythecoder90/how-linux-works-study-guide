@@ -1,0 +1,249 @@
+# SSHFS fstab Examples
+# File: examples/sshfs/fstab-sshfs-examples
+#
+# These examples show how to configure SSHFS mounts in /etc/fstab
+# for automatic mounting at boot time.
+#
+# IMPORTANT NOTES:
+# - SSHFS requires FUSE (Filesystem in Userspace)
+# - SSH key-based authentication must be set up
+# - The _netdev option is crucial for network filesystems
+# - Test all mounts manually before adding to fstab
+# - Consider security implications of persistent mounts
+
+#################################################################
+# Basic SSHFS Mount Examples
+#################################################################
+
+# Basic SSHFS mount with default options
+# user@server:/remote/path /local/path fuse.sshfs defaults,_netdev 0 0
+# user@example.com:/home/user/documents /mnt/remote-docs fuse.sshfs defaults,_netdev 0 0
+
+# SSHFS mount with custom SSH key
+# user@server:/path /local/path fuse.sshfs defaults,_netdev,IdentityFile=/home/user/.ssh/custom_key 0 0
+user@work-server.com:/home/user/projects /home/user/work-projects fuse.sshfs defaults,_netdev,IdentityFile=/home/user/.ssh/work_key 0 0
+
+# SSHFS mount with custom SSH port
+# user@server:/path /local/path fuse.sshfs defaults,_netdev,Port=2222 0 0
+dev@dev-server.com:/var/www /home/user/dev-site fuse.sshfs defaults,_netdev,Port=2222,IdentityFile=/home/user/.ssh/dev_key 0 0
+
+#################################################################
+# Performance-Optimized SSHFS Mounts
+#################################################################
+
+# High-performance mount for fast networks
+user@server:/data /mnt/server-data fuse.sshfs defaults,_netdev,cache=yes,compression=yes,large_read,auto_cache,big_writes,IdentityFile=/home/user/.ssh/id_rsa 0 0
+
+# Optimized for development work (follows symlinks)
+dev@git-server:/repositories /home/user/repositories fuse.sshfs defaults,_netdev,cache=yes,follow_symlinks,workaround=rename,IdentityFile=/home/user/.ssh/git_key 0 0
+
+# Media server mount (optimized for large files)
+media@media-server:/storage /mnt/media fuse.sshfs defaults,_netdev,cache=yes,compression=no,large_read,big_writes,IdentityFile=/home/user/.ssh/media_key 0 0
+
+#################################################################
+# Security-Focused SSHFS Mounts
+#################################################################
+
+# High-security mount (no caching, no compression)
+admin@secure-server:/sensitive /mnt/secure fuse.sshfs defaults,_netdev,cache=no,compression=no,reconnect,ServerAliveInterval=15,IdentityFile=/home/user/.ssh/secure_key 0 0
+
+# Read-only mount for backup server
+backup@backup-server:/backups /mnt/backups fuse.sshfs defaults,_netdev,ro,cache=yes,IdentityFile=/home/user/.ssh/backup_key 0 0
+
+# Audit-compliant mount with strict options
+audit@audit-server:/logs /mnt/audit-logs fuse.sshfs defaults,_netdev,cache=no,StrictHostKeyChecking=yes,UserKnownHostsFile=/home/user/.ssh/known_hosts,IdentityFile=/home/user/.ssh/audit_key 0 0
+
+#################################################################
+# User-Specific SSHFS Mounts
+#################################################################
+
+# User-specific mount (only accessible by specific user)
+user@personal-server:/home/user /home/user/personal fuse.sshfs defaults,_netdev,users,allow_other,uid=1000,gid=1000,IdentityFile=/home/user/.ssh/personal_key 0 0
+
+# Shared mount accessible by group
+shared@file-server:/shared /mnt/shared fuse.sshfs defaults,_netdev,allow_other,gid=100,umask=002,IdentityFile=/home/user/.ssh/shared_key 0 0
+
+#################################################################
+# Conditional and Environment-Specific Mounts
+#################################################################
+
+# Development environment mount (only if server is available)
+dev@dev-server.local:/workspace /home/user/workspace fuse.sshfs defaults,_netdev,users,noauto,cache=yes,follow_symlinks,IdentityFile=/home/user/.ssh/dev_key 0 0
+
+# VPN-dependent mount (only mount when VPN is connected)
+vpn-user@internal-server:/data /mnt/vpn-data fuse.sshfs defaults,_netdev,noauto,cache=yes,IdentityFile=/home/user/.ssh/vpn_key 0 0
+
+# Home office mount (with reconnection for unreliable connections)
+home@home-server.ddns.net:/storage /mnt/home-storage fuse.sshfs defaults,_netdev,reconnect,ServerAliveInterval=15,ServerAliveCountMax=3,IdentityFile=/home/user/.ssh/home_key 0 0
+
+#################################################################
+# Advanced SSHFS Mount Options
+#################################################################
+
+# Mount with custom SSH configuration
+user@server:/path /mnt/custom fuse.sshfs defaults,_netdev,ssh_command='ssh -F /home/user/.ssh/custom_config',IdentityFile=/home/user/.ssh/custom_key 0 0
+
+# Mount with connection timeout and retry settings
+user@unreliable-server:/data /mnt/unreliable fuse.sshfs defaults,_netdev,reconnect,ConnectTimeout=10,ServerAliveInterval=15,ServerAliveCountMax=3,IdentityFile=/home/user/.ssh/id_rsa 0 0
+
+# Mount with specific cipher for performance
+user@fast-server:/data /mnt/fast-data fuse.sshfs defaults,_netdev,cache=yes,Ciphers=aes128-ctr,Compression=yes,IdentityFile=/home/user/.ssh/id_rsa 0 0
+
+# Mount with debug options (for troubleshooting)
+# user@server:/path /mnt/debug fuse.sshfs defaults,_netdev,debug,sshfs_debug,loglevel=debug,IdentityFile=/home/user/.ssh/id_rsa 0 0
+
+#################################################################
+# Systemd-Style Mounts (Alternative to fstab)
+#################################################################
+
+# Instead of fstab, you can create systemd mount units:
+# /etc/systemd/system/mnt-server\x2ddata.mount
+#
+# [Unit]
+# Description=SSHFS mount for server data
+# After=network-online.target
+# Wants=network-online.target
+#
+# [Mount]
+# What=user@server:/data
+# Where=/mnt/server-data
+# Type=fuse.sshfs
+# Options=_netdev,users,IdentityFile=/home/user/.ssh/id_rsa,cache=yes
+#
+# [Install]
+# WantedBy=multi-user.target
+
+#################################################################
+# Common SSHFS Options Reference
+#################################################################
+
+# Connection Options:
+# - IdentityFile=/path/to/key       SSH private key file
+# - Port=2222                       SSH port (default: 22)
+# - ConnectTimeout=30               Connection timeout in seconds
+# - ServerAliveInterval=15          Send keepalive every N seconds
+# - ServerAliveCountMax=3           Max failed keepalives before disconnect
+# - Compression=yes                 Enable SSH compression
+# - Ciphers=aes128-ctr             Specify SSH cipher
+
+# Performance Options:
+# - cache=yes                       Enable client-side caching
+# - cache=no                        Disable all caching
+# - auto_cache                      Automatic cache invalidation
+# - big_writes                      Use larger write requests
+# - large_read                      Use larger read requests
+# - compression=yes                 Enable SSHFS compression
+# - kernel_cache                    Use kernel page cache
+
+# Security Options:
+# - StrictHostKeyChecking=yes       Strict host key checking
+# - UserKnownHostsFile=/path        Known hosts file location
+# - ro                              Read-only mount
+# - allow_other                     Allow other users to access
+# - allow_root                      Allow root to access
+
+# Behavior Options:
+# - reconnect                       Automatically reconnect on disconnect
+# - follow_symlinks                 Follow symbolic links on server
+# - workaround=rename               Work around server rename issues
+# - transform_symlinks              Transform absolute symlinks to relative
+# - uid=1000                        Force owner UID
+# - gid=100                         Force owner GID
+# - umask=022                       Set file permission mask
+
+# Mount Options:
+# - _netdev                         Network device (wait for network)
+# - users                           Allow regular users to mount
+# - noauto                          Don't mount automatically at boot
+# - user                            Allow user who mounted to unmount
+# - defaults                        Use default mount options
+
+#################################################################
+# Troubleshooting Tips
+#################################################################
+
+# 1. Test SSH connection first:
+#    ssh -i /path/to/key user@server
+#
+# 2. Test manual SSHFS mount:
+#    sshfs -o debug user@server:/path /mnt/test
+#
+# 3. Check SSH key permissions:
+#    chmod 600 /path/to/ssh/key
+#
+# 4. Verify network connectivity:
+#    ping server
+#    telnet server 22
+#
+# 5. Check for conflicting mounts:
+#    mount | grep sshfs
+#    fusermount -u /mnt/point
+#
+# 6. Monitor SSHFS logs:
+#    journalctl -u systemd-networkd
+#    dmesg | grep fuse
+#
+# 7. Test with minimal options first:
+#    sshfs user@server:/path /mnt/test
+#
+# 8. Common issues:
+#    - Permission denied: Check SSH keys and server permissions
+#    - Connection refused: Check SSH service and firewall
+#    - Mount hangs: Check network connectivity and timeouts
+#    - Files appear empty: Check cache settings and permissions
+
+#################################################################
+# Security Considerations
+#################################################################
+
+# 1. SSH Key Management:
+#    - Use dedicated keys for SSHFS mounts
+#    - Protect private keys with proper permissions (600)
+#    - Consider using SSH agent for key management
+#    - Rotate keys regularly
+#
+# 2. Network Security:
+#    - Use VPN for connections over untrusted networks
+#    - Enable SSH compression for WAN connections
+#    - Consider using non-standard SSH ports
+#    - Monitor connection logs for unauthorized access
+#
+# 3. File System Security:
+#    - Use read-only mounts when write access isn't needed
+#    - Set appropriate uid/gid and umask values
+#    - Avoid allow_other unless specifically needed
+#    - Regularly audit mounted file systems
+#
+# 4. Server Security:
+#    - Restrict SSH access to specific users/groups
+#    - Use SSH keys instead of passwords
+#    - Enable SSH connection logging
+#    - Keep SSH server updated
+
+#################################################################
+# Performance Tuning Guidelines
+#################################################################
+
+# For LAN connections (fast, reliable):
+# - Enable caching: cache=yes,auto_cache
+# - Use compression: compression=yes
+# - Larger buffers: big_writes,large_read
+# - Example: cache=yes,compression=yes,big_writes,large_read
+#
+# For WAN connections (slower, higher latency):
+# - Enable reconnection: reconnect
+# - Tune keepalives: ServerAliveInterval=15
+# - Use compression: Compression=yes
+# - Example: reconnect,ServerAliveInterval=15,Compression=yes
+#
+# For unreliable connections:
+# - Enable reconnection: reconnect
+# - Shorter timeouts: ConnectTimeout=10
+# - More frequent keepalives: ServerAliveInterval=10
+# - Example: reconnect,ConnectTimeout=10,ServerAliveInterval=10
+#
+# For high-security environments:
+# - Disable caching: cache=no
+# - Strict checking: StrictHostKeyChecking=yes
+# - No compression: compression=no
+# - Example: cache=no,StrictHostKeyChecking=yes,compression=no

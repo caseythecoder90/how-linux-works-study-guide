@@ -1,0 +1,213 @@
+# Production NFS exports configuration
+# File: examples/nfs/exports.production
+# Location: /etc/exports
+#
+# Format: directory client(options) [client(options)...]
+#
+# Security Note: Always use the most restrictive settings possible
+# for your environment. This configuration follows enterprise security
+# best practices.
+
+#################################################################
+# Public Read-Only Exports
+#################################################################
+
+# Company-wide public files (software, documentation, etc.)
+/srv/nfs/public             *(ro,sync,no_subtree_check,root_squash,all_squash,anonuid=65534,anongid=65534)
+
+# Software repository - accessible to all internal networks
+/srv/nfs/software           192.168.0.0/16(ro,sync,no_subtree_check,root_squash) \
+                           10.0.0.0/8(ro,sync,no_subtree_check,root_squash) \
+                           172.16.0.0/12(ro,sync,no_subtree_check,root_squash)
+
+# Documentation repository
+/srv/nfs/docs              *(ro,sync,no_subtree_check,root_squash,all_squash,anonuid=65534,anongid=65534)
+
+#################################################################
+# Department-Specific Exports
+#################################################################
+
+# Development team share - restricted network access
+/srv/nfs/development       192.168.10.0/24(rw,sync,no_subtree_check,root_squash) \
+                           dev-server.company.com(rw,sync,no_subtree_check,root_squash) \
+                           jenkins.company.com(rw,sync,no_subtree_check,root_squash)
+
+# Finance department - highly restricted
+/srv/nfs/finance           192.168.20.0/24(rw,sync,no_subtree_check,root_squash) \
+                           finance-server.company.com(rw,sync,no_subtree_check,root_squash) \
+                           accounting.company.com(rw,sync,no_subtree_check,root_squash)
+
+# Human Resources - most restrictive access
+/srv/nfs/hr                hr-workstation1.company.com(rw,sync,no_subtree_check,root_squash) \
+                           hr-workstation2.company.com(rw,sync,no_subtree_check,root_squash) \
+                           hr-server.company.com(rw,sync,no_subtree_check,root_squash)
+
+# IT Department - administrative access
+/srv/nfs/it                192.168.30.0/24(rw,sync,no_subtree_check,no_root_squash) \
+                           it-server.company.com(rw,sync,no_subtree_check,no_root_squash) \
+                           admin-workstation.company.com(rw,sync,no_subtree_check,no_root_squash)
+
+# Marketing department
+/srv/nfs/marketing         192.168.40.0/24(rw,sync,no_subtree_check,root_squash) \
+                           marketing-server.company.com(rw,sync,no_subtree_check,root_squash)
+
+#################################################################
+# Project-Based Exports
+#################################################################
+
+# Project Alpha - temporary project share
+/srv/nfs/projects/alpha    192.168.50.0/24(rw,sync,no_subtree_check,root_squash) \
+                           project-alpha.company.com(rw,sync,no_subtree_check,root_squash)
+
+# Project Beta - cross-departmental access
+/srv/nfs/projects/beta     192.168.10.0/24(rw,sync,no_subtree_check,root_squash) \
+                           192.168.20.0/24(ro,sync,no_subtree_check,root_squash) \
+                           192.168.40.0/24(rw,sync,no_subtree_check,root_squash)
+
+#################################################################
+# Home Directories
+#################################################################
+
+# User home directories - individual host access
+/home                      client1.company.com(rw,sync,root_squash,no_subtree_check) \
+                           client2.company.com(rw,sync,root_squash,no_subtree_check) \
+                           client3.company.com(rw,sync,root_squash,no_subtree_check)
+
+# Remote worker home directories - VPN access
+/home/remote               vpn-pool.company.com(rw,sync,root_squash,no_subtree_check) \
+                           10.8.0.0/24(rw,sync,root_squash,no_subtree_check)
+
+#################################################################
+# Backup and Archive Exports
+#################################################################
+
+# Backup server access - dedicated backup network
+/srv/nfs/backups           backup-server.company.com(rw,sync,no_root_squash,no_subtree_check) \
+                           backup-secondary.company.com(rw,sync,no_root_squash,no_subtree_check) \
+                           192.168.100.0/24(rw,sync,no_root_squash,no_subtree_check)
+
+# Archive storage - read-only for most, write for archival systems
+/srv/nfs/archives          *(ro,sync,no_subtree_check,root_squash,all_squash) \
+                           archive-server.company.com(rw,sync,no_subtree_check,no_root_squash)
+
+#################################################################
+# High-Performance Workstation Exports
+#################################################################
+
+# Rendering farm - high-performance compute cluster
+/srv/nfs/rendering         render-node*.company.com(rw,sync,no_subtree_check,no_root_squash) \
+                           workstation*.company.com(rw,sync,no_subtree_check,no_root_squash) \
+                           192.168.200.0/24(rw,sync,no_subtree_check,no_root_squash)
+
+# CAD workstations - engineering department
+/srv/nfs/cad              cad-workstation*.company.com(rw,sync,no_subtree_check,root_squash) \
+                           engineer*.company.com(rw,sync,no_subtree_check,root_squash) \
+                           192.168.60.0/24(rw,sync,no_subtree_check,root_squash)
+
+#################################################################
+# Application-Specific Exports
+#################################################################
+
+# Database shared storage
+/srv/nfs/database          db-primary.company.com(rw,sync,no_subtree_check,no_root_squash) \
+                           db-secondary.company.com(rw,sync,no_subtree_check,no_root_squash) \
+                           db-backup.company.com(ro,sync,no_subtree_check,root_squash)
+
+# Web server content
+/srv/nfs/web              web*.company.com(ro,sync,no_subtree_check,root_squash) \
+                           load-balancer.company.com(ro,sync,no_subtree_check,root_squash) \
+                           cms.company.com(rw,sync,no_subtree_check,root_squash)
+
+# Container orchestration - Kubernetes persistent volumes
+/srv/nfs/k8s              k8s-master*.company.com(rw,sync,no_subtree_check,no_root_squash) \
+                           k8s-worker*.company.com(rw,sync,no_subtree_check,no_root_squash) \
+                           192.168.80.0/24(rw,sync,no_subtree_check,no_root_squash)
+
+#################################################################
+# NFSv4 Pseudo Root (if using NFSv4)
+#################################################################
+
+# NFSv4 requires a pseudo root filesystem
+/srv/nfs                   *(ro,sync,fsid=0,crossmnt,no_subtree_check,root_squash)
+
+# NFSv4 exports relative to pseudo root
+/srv/nfs/v4/public        *(ro,sync,no_subtree_check,root_squash)
+/srv/nfs/v4/shared        192.168.0.0/16(rw,sync,no_subtree_check,root_squash)
+
+#################################################################
+# Temporary and Testing Exports (Remove in production)
+#################################################################
+
+# Testing export - REMOVE IN PRODUCTION
+# /srv/nfs/test             192.168.1.0/24(rw,sync,no_subtree_check,no_root_squash)
+
+#################################################################
+# Security Notes and Best Practices
+#################################################################
+
+# Export Options Explained:
+# - ro/rw: Read-only or read-write access
+# - sync: Synchronous writes (safer but slower)
+# - async: Asynchronous writes (faster but less safe)
+# - no_subtree_check: Disable subtree checking (recommended for performance)
+# - root_squash: Map root user to anonymous user (security)
+# - no_root_squash: Allow root access (use sparingly)
+# - all_squash: Map all users to anonymous user (maximum security)
+# - anonuid/anongid: Specify anonymous user/group IDs
+# - secure: Require requests from privileged ports (< 1024)
+# - insecure: Allow requests from non-privileged ports
+# - fsid: Unique filesystem identifier for NFSv4
+
+# Network Security:
+# - Always specify the most restrictive client list possible
+# - Use specific hostnames instead of wildcards when possible
+# - Consider using VPN or private networks for sensitive data
+# - Regularly audit and update access lists
+# - Monitor NFS access logs for unauthorized attempts
+
+# Performance Considerations:
+# - Use 'sync' for critical data, 'async' for performance (with UPS)
+# - Consider 'no_subtree_check' for better performance
+# - Use NFSv4 for better performance and security features
+# - Implement proper network infrastructure (Gigabit+)
+# - Consider dedicated storage networks for high-performance workloads
+
+# Backup Strategy:
+# - Ensure all exported data is properly backed up
+# - Test restore procedures regularly
+# - Consider snapshot-capable filesystems (ZFS, Btrfs, LVM)
+# - Implement offsite backup for critical data
+
+# Monitoring and Maintenance:
+# - Monitor disk space on exported filesystems
+# - Check NFS service logs regularly
+# - Monitor network utilization
+# - Update NFS software regularly for security patches
+# - Document all exports and their purposes
+
+#################################################################
+# Commands for Managing Exports
+#################################################################
+
+# Reload exports without restarting NFS:
+# exportfs -ra
+
+# List current exports:
+# exportfs -v
+
+# Show which clients are connected:
+# showmount -a
+
+# Show available exports:
+# showmount -e localhost
+
+# Add temporary export:
+# exportfs -o rw,sync,no_root_squash 192.168.1.100:/tmp/test
+
+# Remove export:
+# exportfs -u 192.168.1.100:/tmp/test
+
+# Test exports configuration:
+# exportfs -s
+
+#################################################################

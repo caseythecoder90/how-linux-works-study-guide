@@ -1,0 +1,424 @@
+# SSHFS Systemd Mount Unit Examples
+# File: examples/sshfs/sshfs-systemd-mount.service
+#
+# Systemd mount units provide an alternative to /etc/fstab for SSHFS mounts
+# Benefits:
+# - Better dependency management
+# - Automatic retry on failure
+# - Service-style management (start/stop/status)
+# - Integration with systemd logging
+# - Conditional mounting based on network availability
+
+#################################################################
+# Basic SSHFS Mount Unit
+# File: /etc/systemd/system/mnt-remote.mount
+#################################################################
+
+[Unit]
+Description=SSHFS mount for remote server
+Documentation=man:sshfs(1) man:systemd.mount(5)
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/mnt
+
+[Mount]
+What=user@server.example.com:/home/user/documents
+Where=/mnt/remote
+Type=fuse.sshfs
+Options=_netdev,users,allow_other,IdentityFile=/home/user/.ssh/id_rsa,cache=yes,compression=yes,reconnect
+TimeoutSec=30
+
+[Install]
+WantedBy=multi-user.target
+
+#################################################################
+# Development Server Mount
+# File: /etc/systemd/system/home-user-dev.mount
+#################################################################
+
+[Unit]
+Description=Development server SSHFS mount
+Documentation=man:sshfs(1)
+After=network-online.target
+Wants=network-online.target
+# Only mount if VPN is connected (example dependency)
+# Wants=openvpn@office.service
+# After=openvpn@office.service
+
+[Mount]
+What=dev@dev-server.company.com:/var/www/html
+Where=/home/user/dev
+Type=fuse.sshfs
+Options=_netdev,users,IdentityFile=/home/user/.ssh/dev_key,Port=2222,cache=yes,follow_symlinks,workaround=rename,reconnect,ServerAliveInterval=15
+
+[Install]
+WantedBy=multi-user.target
+
+#################################################################
+# High-Performance Media Server Mount
+# File: /etc/systemd/system/mnt-media.mount
+#################################################################
+
+[Unit]
+Description=Media server high-performance mount
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/mnt
+
+[Mount]
+What=media@media-server.local:/storage/media
+Where=/mnt/media
+Type=fuse.sshfs
+Options=_netdev,allow_other,IdentityFile=/home/user/.ssh/media_key,cache=yes,compression=no,big_writes,large_read,auto_cache,kernel_cache
+TimeoutSec=60
+
+[Install]
+WantedBy=multi-user.target
+
+#################################################################
+# Secure Backup Server Mount (Read-Only)
+# File: /etc/systemd/system/mnt-backups.mount
+#################################################################
+
+[Unit]
+Description=Secure backup server mount (read-only)
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/mnt
+
+[Mount]
+What=backup@backup-server.company.com:/backups
+Where=/mnt/backups
+Type=fuse.sshfs
+Options=_netdev,ro,IdentityFile=/home/user/.ssh/backup_key,cache=no,StrictHostKeyChecking=yes,UserKnownHostsFile=/home/user/.ssh/known_hosts,ConnectTimeout=30
+TimeoutSec=45
+
+[Install]
+WantedBy=multi-user.target
+
+#################################################################
+# User-Specific Home Directory Mount
+# File: /etc/systemd/system/home-user-remote\x2dhome.mount
+# Note: Systemd escapes special characters in unit names
+#################################################################
+
+[Unit]
+Description=User home directory on remote server
+After=network-online.target user.slice
+Wants=network-online.target
+RequiresMountsFor=/home/user
+
+[Mount]
+What=user@home-server.ddns.net:/home/user
+Where=/home/user/remote-home
+Type=fuse.sshfs
+Options=_netdev,users,uid=1000,gid=1000,IdentityFile=/home/user/.ssh/home_key,cache=yes,reconnect,ServerAliveInterval=15,ServerAliveCountMax=3
+TimeoutSec=30
+
+[Install]
+WantedBy=multi-user.target
+
+#################################################################
+# Conditional Mount with Network Check
+# File: /etc/systemd/system/mnt-office.mount
+#################################################################
+
+[Unit]
+Description=Office server mount (conditional)
+After=network-online.target
+Wants=network-online.target
+# Condition to check if server is reachable
+ConditionPathExists=/usr/bin/ping
+# Custom condition script (create separately)
+# ExecCondition=/usr/local/bin/check-office-server.sh
+
+[Mount]
+What=user@office-server.company.com:/shared
+Where=/mnt/office
+Type=fuse.sshfs
+Options=_netdev,allow_other,IdentityFile=/home/user/.ssh/office_key,cache=yes,compression=yes,reconnect
+
+[Install]
+WantedBy=multi-user.target
+
+#################################################################
+# SSHFS Mount with Automount (On-Demand)
+# File: /etc/systemd/system/mnt-ondemand.mount
+#################################################################
+
+[Unit]
+Description=On-demand SSHFS mount
+After=network-online.target
+Wants=network-online.target
+
+[Mount]
+What=user@server.example.com:/data
+Where=/mnt/ondemand
+Type=fuse.sshfs
+Options=_netdev,IdentityFile=/home/user/.ssh/id_rsa,cache=yes,compression=yes
+TimeoutSec=30
+
+# Corresponding automount unit
+# File: /etc/systemd/system/mnt-ondemand.automount
+
+[Unit]
+Description=Automount for on-demand SSHFS
+RequiresMountsFor=/mnt
+
+[Automount]
+Where=/mnt/ondemand
+TimeoutIdleSec=300
+
+[Install]
+WantedBy=multi-user.target
+
+#################################################################
+# Systemd Service for SSHFS Management
+# File: /etc/systemd/system/sshfs-manager.service
+#################################################################
+
+[Unit]
+Description=SSHFS Mount Manager
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/sshfs-mount-all.sh
+ExecStop=/usr/local/bin/sshfs-unmount-all.sh
+ExecReload=/usr/local/bin/sshfs-reload.sh
+TimeoutStartSec=120
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target
+
+#################################################################
+# Advanced Mount with Retry Logic
+# File: /etc/systemd/system/mnt-reliable.mount
+#################################################################
+
+[Unit]
+Description=Reliable SSHFS mount with retry
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/mnt
+
+[Mount]
+What=user@reliable-server.com:/data
+Where=/mnt/reliable
+Type=fuse.sshfs
+Options=_netdev,IdentityFile=/home/user/.ssh/id_rsa,cache=yes,reconnect,ServerAliveInterval=15,ServerAliveCountMax=3,ConnectTimeout=10
+TimeoutSec=45
+
+[Install]
+WantedBy=multi-user.target
+
+# Corresponding service for retry logic
+# File: /etc/systemd/system/sshfs-reliable-monitor.service
+
+[Unit]
+Description=Monitor and retry SSHFS reliable mount
+After=mnt-reliable.mount
+Wants=mnt-reliable.mount
+
+[Service]
+Type=simple
+Restart=always
+RestartSec=30
+ExecStart=/usr/local/bin/monitor-sshfs-mount.sh /mnt/reliable
+ExecStop=/bin/kill -TERM $MAINPID
+
+[Install]
+WantedBy=multi-user.target
+
+#################################################################
+# User Session Mount (Per-User)
+# File: ~/.config/systemd/user/remote-docs.mount
+#################################################################
+
+[Unit]
+Description=User's remote documents
+After=network-online.target
+Wants=network-online.target
+
+[Mount]
+What=user@personal-server.com:/home/user/documents
+Where=%h/remote-docs
+Type=fuse.sshfs
+Options=IdentityFile=%h/.ssh/personal_key,cache=yes,compression=yes,reconnect,uid=%i,gid=%i
+
+[Install]
+WantedBy=default.target
+
+#################################################################
+# Template Mount Unit for Multiple Servers
+# File: /etc/systemd/system/sshfs@.mount
+#################################################################
+
+[Unit]
+Description=SSHFS mount for %i
+After=network-online.target
+Wants=network-online.target
+RequiresMountsFor=/mnt
+
+[Mount]
+What=%i
+Where=/mnt/%i
+Type=fuse.sshfs
+Options=_netdev,IdentityFile=/etc/sshfs/keys/%i,cache=yes,compression=yes,reconnect
+TimeoutSec=30
+
+[Install]
+WantedBy=multi-user.target
+
+# Usage: systemctl enable sshfs@user@server.com:/path.mount
+
+#################################################################
+# Systemd Commands for Managing SSHFS Mounts
+#################################################################
+
+# Enable and start a mount:
+# systemctl enable mnt-remote.mount
+# systemctl start mnt-remote.mount
+
+# Check mount status:
+# systemctl status mnt-remote.mount
+
+# Stop and disable a mount:
+# systemctl stop mnt-remote.mount
+# systemctl disable mnt-remote.mount
+
+# Reload systemd configuration after changes:
+# systemctl daemon-reload
+
+# View mount logs:
+# journalctl -u mnt-remote.mount
+
+# List all mount units:
+# systemctl list-units --type=mount
+
+# Enable automount:
+# systemctl enable mnt-ondemand.automount
+# systemctl start mnt-ondemand.automount
+
+# Check automount status:
+# systemctl status mnt-ondemand.automount
+
+#################################################################
+# Helper Scripts for Systemd SSHFS Management
+#################################################################
+
+# /usr/local/bin/sshfs-mount-all.sh
+#!/bin/bash
+# Mount all configured SSHFS units
+for unit in /etc/systemd/system/*sshfs*.mount; do
+    if [[ -f "$unit" ]]; then
+        unit_name=$(basename "$unit")
+        systemctl start "$unit_name"
+    fi
+done
+
+# /usr/local/bin/sshfs-unmount-all.sh
+#!/bin/bash
+# Unmount all SSHFS units
+systemctl stop '*.mount' --type=mount | grep sshfs
+
+# /usr/local/bin/monitor-sshfs-mount.sh
+#!/bin/bash
+# Monitor SSHFS mount and remount if necessary
+MOUNT_POINT="$1"
+while true; do
+    if ! mountpoint -q "$MOUNT_POINT"; then
+        logger "SSHFS mount $MOUNT_POINT not found, attempting remount"
+        systemctl start "$(systemd-escape --path "$MOUNT_POINT").mount"
+    fi
+    sleep 30
+done
+
+# /usr/local/bin/check-office-server.sh
+#!/bin/bash
+# Check if office server is reachable
+if ping -c 1 -W 5 office-server.company.com >/dev/null 2>&1; then
+    exit 0  # Server reachable
+else
+    exit 1  # Server not reachable
+fi
+
+#################################################################
+# Troubleshooting Systemd SSHFS Mounts
+#################################################################
+
+# 1. Check unit file syntax:
+#    systemd-analyze verify /etc/systemd/system/mnt-remote.mount
+
+# 2. Debug mount failures:
+#    systemctl status mnt-remote.mount
+#    journalctl -u mnt-remote.mount -f
+
+# 3. Test mount manually:
+#    /bin/mount /mnt/remote
+
+# 4. Check network dependencies:
+#    systemctl list-dependencies mnt-remote.mount
+
+# 5. Verify SSH connectivity:
+#    ssh -i /home/user/.ssh/id_rsa user@server.com
+
+# 6. Check systemd mount options:
+#    systemctl show mnt-remote.mount
+
+# 7. Force remount:
+#    systemctl restart mnt-remote.mount
+
+# 8. Check for conflicts:
+#    systemctl list-units --state=failed
+
+#################################################################
+# Security Notes for Systemd SSHFS Mounts
+#################################################################
+
+# 1. File Permissions:
+#    - Mount unit files: 644 (readable by all)
+#    - SSH keys: 600 (readable by owner only)
+#    - Key directories: 700 (accessible by owner only)
+
+# 2. User Context:
+#    - System mounts run as root
+#    - User mounts run in user context
+#    - Use appropriate uid/gid options
+
+# 3. Network Security:
+#    - Use VPN for remote connections
+#    - Implement proper firewall rules
+#    - Monitor connection logs
+
+# 4. Service Hardening:
+#    - Use dedicated SSH keys
+#    - Implement connection timeouts
+#    - Enable strict host key checking
+
+#################################################################
+# Performance Considerations
+#################################################################
+
+# 1. Mount Dependencies:
+#    - Use After= to control mount order
+#    - RequiresMountsFor= for nested mounts
+#    - Avoid circular dependencies
+
+# 2. Timeout Settings:
+#    - Set appropriate TimeoutSec values
+#    - Consider network latency
+#    - Balance between reliability and speed
+
+# 3. Resource Usage:
+#    - Monitor CPU usage of FUSE processes
+#    - Watch memory consumption with caching
+#    - Consider connection limits
+
+# 4. Parallel Mounting:
+#    - Systemd mounts units in parallel by default
+#    - Use ordering directives when needed
+#    - Avoid mount storms on slow networks
